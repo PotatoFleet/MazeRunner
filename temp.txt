@@ -1,7 +1,8 @@
 /*
     TODO:
-    1. Fix movement bug
-    2. Clean up code (and write comments)
+    1. Improve Performance (improving tile mesh)
+    2. Fix movement bug
+    3. Clean up code (and write comments)
 */
 
 "use strict";
@@ -111,7 +112,7 @@ const wallMesh = new THREE.InstancedMesh(
 
 const tileMesh = new THREE.InstancedMesh(
   new THREE.PlaneGeometry(WALL_WIDTH, WALL_DEPTH),
-  new THREE.MeshPhongMaterial({ color: 0xbcaaaa }),
+  new THREE.MeshBasicMaterial({ color: 0xbcaaaa }),
   numberOfTiles()
 );
 
@@ -228,6 +229,31 @@ function createFloorTile(x, z, clr) {
     scene.add(mesh);
     if (clr === 0xff0000) endTile = tile;
   }
+
+  // const geometry = new THREE.PlaneGeometry(WALL_WIDTH, WALL_DEPTH);
+  // let material;
+  // if (clr !== 0xbcaaaa) {
+  //   material = new THREE.MeshBasicMaterial({ color: clr });
+  // } else {
+  //   material = new THREE.MeshPhongMaterial({ color: clr });
+  // }
+  // const plane = new THREE.Mesh(geometry, material);
+
+  // plane.receiveShadow = true;
+
+  // plane.rotation.x = -Math.PI / 2;
+  // plane.position.set(x, -1.5, z);
+
+  // tiles.push({
+  //   tile: plane,
+  //   x: x,
+  //   z: z,
+  // });
+
+  // if (clr === 0xff0000) endTile = tiles.at(-1);
+
+  // if (clr !== 0xbcaaaa) scene.add(plane);
+  // else bloomScene.add(plane);
 }
 
 function tileAt(x, z) {
@@ -344,7 +370,13 @@ async function pathFind() {
     tileAt(controls.getObject().position.x, controls.getObject().position.z)
   );
 
-  for (const tile of bloomTiles) scene.remove(tile);
+  for (const tile of bloomTiles) {
+    // tile.material = new THREE.MeshBasicMaterial({
+    //   color: 0xbcaaaa,
+    // });
+    scene.remove(tile);
+    // bloomScene.add(tile);
+  }
 
   bloomTiles = [];
 
@@ -358,6 +390,14 @@ async function pathFind() {
     scene.add(mesh);
     bloomTiles.push(mesh);
     await sleep(400);
+    // if (tile.parent === scene) continue;
+    // tile.material = new THREE.MeshBasicMaterial({
+    //   color: 0x00ff00,
+    // });
+    // bloomTiles.push(tile);
+    // bloomScene.remove(tile);
+    // scene.add(tile);
+    // await sleep(400);
   }
 }
 

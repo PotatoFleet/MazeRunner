@@ -6,6 +6,9 @@
 
 "use strict";
 
+import "./style.css";
+import stoneTextureURL from "./stone_block.jpg";
+
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -97,7 +100,7 @@ composer.addPass(bloomPass);
 composer.addPass(renderPass2);
 composer.addPass(outputPass);
 
-const wallTexture = new THREE.TextureLoader().load("stone_block.jpg");
+const wallTexture = new THREE.TextureLoader().load(stoneTextureURL);
 wallTexture.wrapT = THREE.RepeatWrapping;
 wallTexture.repeat.set(1, 2);
 

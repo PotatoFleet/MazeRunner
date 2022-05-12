@@ -79,6 +79,7 @@ body {
   font-size: 1.3em;
   display: flex;
   flex-direction: column;
+  z-index:5;
 }
 
 .threejs {

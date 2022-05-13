@@ -4,6 +4,7 @@ export default class MazeGenerator {
   }
 }
 
+// Src: https://www.the-art-of-web.com/javascript/maze-generator/
 class MazeBuilder {
   constructor(width, height) {
     this.width = parseInt(width);

@@ -90,6 +90,7 @@ renderPass2.clear = false;
 const outputPass = new ShaderPass(CopyShader);
 outputPass.renderToScreen = true;
 
+// used for bloom effect on tiles
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
   0.2,
@@ -104,9 +105,12 @@ composer.addPass(bloomPass);
 composer.addPass(renderPass2);
 composer.addPass(outputPass);
 
+// loads wall texture
 const wallTexture = new THREE.TextureLoader().load(stoneTextureURL);
 wallTexture.wrapT = THREE.RepeatWrapping;
 wallTexture.repeat.set(1, 2);
+
+// instanced mesh for walls and tiles for high performance
 
 const wallMesh = new THREE.InstancedMesh(
   new THREE.BoxGeometry(WALL_WIDTH, WALL_HEIGHT, WALL_DEPTH),
@@ -122,10 +126,12 @@ const tileMesh = new THREE.InstancedMesh(
   numberOfTiles()
 );
 
+// enablge shadows for walls and tiles
 wallMesh.castShadow = true;
 wallMesh.receiveShadow = true;
 tileMesh.receiveShadow = true;
 
+// lighting
 const sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
 sunLight.position.set(0, 60, 30);
 sunLight.target.position.set(0, 0, 0);
@@ -136,11 +142,8 @@ sunLight.shadow.camera.left = -50;
 sunLight.shadow.camera.right = 50;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
-scene.add(sunLight);
-scene.add(sunLight.target);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
-scene.add(ambientLight);
 
 Array.prototype.equals = function (arr) {
   return (
@@ -186,7 +189,11 @@ function init() {
   });
   scene.add(wallMesh);
   scene.add(tileMesh);
+  scene.add(sunLight);
+  scene.add(sunLight.target);
+  scene.add(ambientLight);
 
+  // maze generation
   for (let i = maze.length - 1; i >= 0; i--) {
     for (let j = 0; j < maze[i].length; j++) {
       const x = (j - Math.floor(maze[0].length / 2)) * WALL_WIDTH;
@@ -221,22 +228,30 @@ function createWall(x, z) {
 function createFloorTile(x, z, clr) {
   const tile = { x: x, z: z };
   tiles.push(tile);
+
+  // adds to tile mesh if normal tile
+  // adds to bloom scene if starting or ending tile
   if (clr === 0xbcaaaa) {
     const translation = new THREE.Matrix4().makeTranslation(x, -1.5, z);
     const rotation = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
+
     tileMesh.setMatrixAt(tileIndex++, translation.multiply(rotation));
   } else {
     const mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(WALL_WIDTH, WALL_DEPTH),
       new THREE.MeshBasicMaterial({ color: clr })
     );
+
     mesh.rotateX(-Math.PI / 2);
     mesh.position.set(x, -1.5, z);
     bloomScene.add(mesh);
+
+    // storing end tile for future use
     if (clr === 0xff0000) endTile = tile;
   }
 }
 
+// helper function
 function tileAt(x, z) {
   for (const tile of tiles) {
     if (
@@ -251,6 +266,7 @@ function tileAt(x, z) {
   return null;
 }
 
+// helper function
 function getAdjacentTiles(tile) {
   let res = [null, null, null, null];
   for (const t of tiles) {
@@ -267,6 +283,7 @@ function getAdjacentTiles(tile) {
   return res;
 }
 
+// distance function for a*
 function manhattanDistance(a, b) {
   return Math.abs(a.z - b.z) + Math.abs(a.x - b.x);
 }
@@ -278,6 +295,10 @@ function key(x) {
 async function pathFind() {
   /* 
   A* SEARCH ALGORITHM (AI Part)
+
+  Guarantees shortest path from start node to end node
+
+  Here, highlights the shortest path (through bloom tiles) from the current position the ending position
   */
 
   let open = [];
@@ -368,25 +389,35 @@ async function pathFind() {
   }
 }
 
+// render function
 function animate() {
   handlePlayer();
   composer.render();
   if (!running) return;
   requestAnimationFrame(function () {
+    // keeps track of fps
+
     const now = performance.now();
     while (times.length > 0 && times[0] <= now - 1000) times.shift();
     times.push(now);
+
+    // updates necessary fields every second
     if (secondDone) {
       timeTaken = parseInt((new Date().getTime() - startTime) / 1000);
+
       fpsEl.textContent = "FPS: " + times.length;
       timeEl.textContent = "Time Taken: " + timeTaken;
+
       secondDone = false;
+
       setTimeout(() => (secondDone = true), 1000);
     }
+
     animate();
   });
 }
 
+// collision function
 function collided(x1, z1, x2, z2) {
   return (
     x1 >= x2 - PLAYER_WIDTH &&
@@ -396,6 +427,13 @@ function collided(x1, z1, x2, z2) {
   );
 }
 
+// player movement handling
+
+/* 
+  Known Bug 🐛: If you look up and face certain directions while moving, you may go the opposite direction
+  Due to finding this bug in the last minute, I wasn't able to fix it in time.
+  A better approach would have been to use quaternions.
+*/
 function handlePlayer() {
   if (keys["w"] || keys["s"] || keys["a"] || keys["d"]) {
     let rotation = controls.getObject().rotation.z;
@@ -457,17 +495,25 @@ function handlePlayer() {
 }
 
 function finished() {
+  // displaying transition to finished screen
   finishedEl.classList.remove("hidden");
   finishedEl.textContent = timeTaken + " Seconds Taken";
+
   document.getElementById("ai-info").classList.add("hidden");
+
   fpsEl.classList.add("hidden");
   timeEl.classList.add("hidden");
-  fireworksEl.classList.add("slide-down");
+
   document.querySelector(".threejs").classList.add("slide-down");
+  finishedEl.classList.add("slide-down");
+  fireworksEl.classList.add("slide-down");
+
   controls.unlock();
+
   drawFireworks(25);
 }
 
+// firework functions for the end of the game
 function initFirework(
   x,
   y,
@@ -561,10 +607,17 @@ const playBtn = document.getElementById("play-heading");
 
 playBtn.addEventListener("click", () => {
   running = true;
+
   startTime = new Date().getTime();
+
   playBtn.classList.remove("scale");
   playBtn.classList.add("hidden");
+
+  // start game
+
   init();
+
   controls.lock();
+
   animate();
 });

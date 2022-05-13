@@ -25,7 +25,7 @@ const fpsEl = document.querySelector(".fps");
 const timeEl = document.querySelector(".time");
 const fireworksEl = document.getElementById("fireworks");
 
-const scene = new THREE.Scene();
+const bloomScene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
   100,
@@ -40,10 +40,10 @@ const renderer = new THREE.WebGLRenderer({
 
 const controls = new PointerLockControls(camera, renderer.domElement);
 
+// Keep generating a new maze until starting position is valid
 let maze;
-do {
-  maze = MazeGenerator.GenerateMaze(20, 20);
-} while (maze[0].indexOf(3) < 2 || maze[0].indexOf(3) > 18);
+do maze = MazeGenerator.GenerateMaze(20, 20);
+while (maze[0].indexOf(3) < 2 || maze[0].indexOf(3) > 18);
 
 const WALL_WIDTH = 1;
 const WALL_DEPTH = 1;
@@ -69,18 +69,22 @@ let running = false;
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+
+// more realistic shadows
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
 renderer.domElement.classList.add("threejs");
 
-scene.background = new THREE.Color(0x7788ff);
+// sky color
+bloomScene.background = new THREE.Color(0x7788ff);
 
-const bloomScene = new THREE.Scene();
+const scene = new THREE.Scene();
 
 const clearPass = new ClearPass();
 
-const renderPass1 = new RenderPass(scene, camera);
+const renderPass1 = new RenderPass(bloomScene, camera);
 renderPass1.clear = false;
-const renderPass2 = new RenderPass(bloomScene, camera);
+const renderPass2 = new RenderPass(scene, camera);
 renderPass2.clear = false;
 
 const outputPass = new ShaderPass(CopyShader);
@@ -132,11 +136,11 @@ sunLight.shadow.camera.left = -50;
 sunLight.shadow.camera.right = 50;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
-bloomScene.add(sunLight);
-bloomScene.add(sunLight.target);
+scene.add(sunLight);
+scene.add(sunLight.target);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
-bloomScene.add(ambientLight);
+scene.add(ambientLight);
 
 Array.prototype.equals = function (arr) {
   return (
@@ -180,8 +184,8 @@ function init() {
   document.querySelector(".threejs").addEventListener("click", () => {
     controls.lock();
   });
-  bloomScene.add(wallMesh);
-  bloomScene.add(tileMesh);
+  scene.add(wallMesh);
+  scene.add(tileMesh);
 
   for (let i = maze.length - 1; i >= 0; i--) {
     for (let j = 0; j < maze[i].length; j++) {
@@ -228,7 +232,7 @@ function createFloorTile(x, z, clr) {
     );
     mesh.rotateX(-Math.PI / 2);
     mesh.position.set(x, -1.5, z);
-    scene.add(mesh);
+    bloomScene.add(mesh);
     if (clr === 0xff0000) endTile = tile;
   }
 }
@@ -347,7 +351,7 @@ async function pathFind() {
     tileAt(controls.getObject().position.x, controls.getObject().position.z)
   );
 
-  for (const tile of bloomTiles) scene.remove(tile);
+  for (const tile of bloomTiles) bloomScene.remove(tile);
 
   bloomTiles = [];
 
@@ -358,7 +362,7 @@ async function pathFind() {
     );
     mesh.rotateX(-Math.PI / 2);
     mesh.position.set(tile.x, -1.49, tile.z);
-    scene.add(mesh);
+    bloomScene.add(mesh);
     bloomTiles.push(mesh);
     await sleep(400);
   }
@@ -441,10 +445,10 @@ function handlePlayer() {
 
     const end = { x: endTile.x, z: endTile.z - WALL_DEPTH };
     if (
-      x > end.x - 0.25 &&
-      x < end.x - 0.25 + WALL_WIDTH &&
-      z > end.z + 0.25 &&
-      z < end.z + 0.25 + WALL_DEPTH
+      x > end.x - 0.2 &&
+      x < end.x - 0.2 + WALL_WIDTH &&
+      z > end.z + 0.2 &&
+      z < end.z + 0.2 + WALL_DEPTH
     ) {
       finished();
       running = false;
